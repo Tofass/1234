@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Поиск с лимитом</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --text: #1b1f27;
+    --muted: #6b7280;
+    --border: #d9dde4;
+    --accent: #3b6ef5;
+    --warn: #e58a00;
+    --danger: #d93a3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141a;
+      --card: #1b1f27;
+      --text: #eceff4;
+      --muted: #98a1b3;
+      --border: #2e3440;
+      --accent: #6b93ff;
+      --warn: #f0a63a;
+      --danger: #f06a6a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { width: 100%; max-width: 560px; }
+
+  .limit {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .limit-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .limit-row strong { color: var(--text); font-weight: 600; }
+  .bar {
+    height: 6px;
+    margin-top: 8px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 100%;
+    background: var(--accent);
+    transition: width .25s ease, background-color .25s ease;
+  }
+  .limit[data-level="low"] .bar-fill { background: var(--warn); }
+  .limit[data-level="empty"] .bar-fill { background: var(--danger); }
+
+  form {
+    display: flex;
+    gap: 8px;
+  }
+  input[type="search"] {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    font: inherit;
+    color: var(--text);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  input[type="search"]:focus-visible,
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button {
+    padding: 0 18px;
+    font: inherit;
+    color: #fff;
+    background: var(--accent);
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
+
+  #result {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 14px;
+    min-height: 1.4em;
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="limit" id="limit" aria-live="polite">
+    <div class="limit-row">
+      <span>Лимит запросов на сегодня</span>
+      <span><strong id="left">10</strong> из <span id="total">10</span></span>
+    </div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="10" id="bar">
+      <div class="bar-fill" id="fill"></div>
+    </div>
+  </section>
+
+  <form id="form" role="search">
+    <input type="search" id="q" placeholder="Что ищем?" autocomplete="off" required>
+    <button type="submit" id="go">Найти</button>
+  </form>
+  <p id="result"></p>
+</main>
+
+<script>
+  const LIMIT = 10;
+  const KEY = "search-limit";
+
+  const el = (id) => document.getElementById(id);
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && s.date === today() && Number.isInteger(s.used)) return s;
+    } catch (e) {}
+    return { date: today(), used: 0 };
+  }
+  function save(s) {
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+  }
+
+  let state = load();
+
+  function render() {
+    const left = Math.max(LIMIT - state.used, 0);
+    el("left").textContent = left;
+    el("total").textContent = LIMIT;
+    el("fill").style.width = (left / LIMIT * 100) + "%";
+    el("bar").setAttribute("aria-valuemax", LIMIT);
+    el("bar").setAttribute("aria-valuenow", left);
+    el("limit").dataset.level = left === 0 ? "empty" : left <= 3 ? "low" : "ok";
+    el("q").disabled = el("go").disabled = left === 0;
+    if (left === 0) el("result").textContent = "Лимит исчерпан. Он обновится завтра.";
+  }
+
+  el("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (state.used >= LIMIT) return;
+    state.used += 1;
+    save(state);
+    el("result").textContent = "Запрос: «" + el("q").value.trim() + "»";
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
