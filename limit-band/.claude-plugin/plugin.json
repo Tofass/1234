@@ -1,0 +1,1 @@
+{ "name": "limit-band", "version": "0.1.0", "description": "Полоска над строкой ввода с остатком лимитов (5 часов и неделя)", "types": "./types/index.d.ts" }
